@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🚁 Drone Detection AI</title>
+  <style>
+    /* 🌸 Reset + Base styling */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to right, #f8f9fa, #eef2f3);
+      color: #333;
+      text-align: center;
+      padding: 50px 20px;
+    }
+
+    h1 {
+      font-size: 42px;
+      color: #222;
+      margin-bottom: 20px;
+    }
+
+    input[type="file"] {
+      padding: 14px;
+      border: 2px dashed #ccc;
+      background: #fff;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border 0.3s ease;
+    }
+    input[type="file"]:hover {
+      border-color: #007bff;
+    }
+
+    button {
+      padding: 14px 26px;
+      font-size: 17px;
+      background: #007bff;
+      border: none;
+      color: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.4s;
+      margin-left: 15px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 30px;
+      margin: 30px auto;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.1);
+      width: 90%;
+      max-width: 800px;
+      transition: transform 0.5s, opacity 0.5s;
+      opacity: 0;
+      transform: translateY(40px);
+      animation: fadeUp 1s forwards;
+    }
+
+    .preview-img, .pred-img {
+      max-width: 100%;
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      margin: 20px 0;
+      transition: transform 0.5s, opacity 0.8s;
+      opacity: 0;
+      transform: scale(0.95);
+      animation: fadeImg 1.2s forwards;
+    }
+
+    .progress-bar {
+      width: 85%;
+      background: #e0e0e0;
+      height: 24px;
+      border-radius: 18px;
+      overflow: hidden;
+      margin: 14px auto;
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+    }
+    .progress {
+      height: 100%;
+      background: linear-gradient(90deg, #28a745, #87ff87);
+      text-align: center;
+      color: #fff;
+      line-height: 24px;
+      width: 0%;
+      transition: width 1.5s ease;
+    }
+
+    .result-box h2 {
+      font-size: 26px;
+      margin-bottom: 12px;
+      color: #444;
+    }
+    .result-box p {
+      font-size: 18px;
+      margin: 8px 0;
+    }
+
+    /* Animations */
+    @keyframes fadeUp {
+      to { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes fadeImg {
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* Fancy hover effect on cards */
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+  </style>
+</head>
+<body>
+
+  <h1>🚁 Drone Detection AI</h1>
+  <input type="file" id="imageUpload">
+  <button onclick="uploadImage()">Upload & Detect</button>
+
+  <div id="preview"></div>
+  <div id="result"></div>
+
+  <script>
+    async function uploadImage() {
+      const input = document.getElementById("imageUpload");
+      const file = input.files[0];
+      if (!file) {
+        alert("Please select an image first.");
+        return;
+      }
+
+      // Show image preview
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        document.getElementById("preview").innerHTML = `
+          <div class="card" style="animation-delay: 0.2s;">
+            <h2>📷 Uploaded Image</h2>
+            <img src="${e.target.result}" class="preview-img">
+          </div>`;
+      };
+      reader.readAsDataURL(file);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("http://localhost:8000/predict/", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await response.json();
+      console.log(data);
+
+      let html = `<div class="card result-box" style="animation-delay: 0.4s;">
+                    <h2>📝 ${data.filename}</h2>`;
+
+      if (data.detections.length === 0) {
+        html += `<p style='color:red;'>❌ No drones detected.</p>`;
+      } else {
+        html += `<p>✅ ${data.detections.length} drone(s) detected:</p>`;
+        data.detections.forEach((det, index) => {
+          html += `<p>Drone ${index+1}: ${det.confidence}% confidence</p>
+          <div class="progress-bar">
+            <div class="progress" style="width:${det.confidence}%;">${det.confidence}%</div>
+          </div>`;
+        });
+      }
+
+      // Show predicted image with detections
+      html += `<h3 style="margin-top:20px;">🔍 Prediction Result:</h3>
+               <img src="data:image/jpeg;base64,${data.predicted_image}" class="pred-img">
+               </div>`;
+
+      document.getElementById("result").innerHTML = html;
+    }
+  </script>
+
+</body>
+</html>
